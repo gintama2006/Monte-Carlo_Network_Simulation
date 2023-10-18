@@ -9,53 +9,51 @@ using OxyPlot.Wpf;
 
 class NetworkSecuritySimulation
 {
-    static int numSimulations = 10000;
-    static int numDevices = 10;
-    static int passwordComplexity = 1;
-    static double successProbability = 1;
+    static int numSimulations = 10000; // Количество симуляций
+    static int numDevices = 10; // Количество устройств
+    static int passwordComplexity = 2; // Сложность паролей
+    static double successProbability = 0.1; // Вероятность успешной атаки
 
-    static int totalSimulations = 0;
-    static int successSimulations = 0;
-    static int failureSimulations = 0;
-    static double minSuccessRate = 1;
-    static double maxSuccessRate = 0;
-    static int totalDevicesHacked = 0;
-
-    static Dictionary<string, int> passwordOccurrences = new Dictionary<string, int>();
-
+    static int totalSimulations = 0; // Общее количество симуляций
+    static int successSimulations = 0; // Количество успешных симуляций
+    static int failureSimulations = 0; // Количество неуспешных симуляций
+    static double minSuccessRate = 1; // Минимальная вероятность успеха
+    static double maxSuccessRate = 0; // Максимальная вероятность успеха
+    static int totalDevicesHacked = 0; // Общее количество взломанных устройств
+    static int totalDevicesNotHacked = numDevices * numSimulations;
+    static Dictionary<string, int> passwordOccurrences = new Dictionary<string, int>(); // Словарь для отслеживания встречаемости паролей
 
     static void Main(string[] args)
     {
-        List<double> successRates = new List<double>();
+        List<double> successRates = new List<double>(); // Список вероятностей успеха
 
         for (int i = 0; i < numSimulations; i++)
         {
-            double successRate = SimulateNetworkSecurity();
+            double successRate = SimulateNetworkSecurity(); // Выполнение симуляции безопасности сети
             successRates.Add(successRate);
-            Console.WriteLine($"Simulation {i + 1}: Success Rate: {successRate:P}");
+            Console.WriteLine($"Симуляция {i + 1}: Вероятность успеха: {successRate:P}");
         }
-        Console.WriteLine($"Total Simulations: {totalSimulations}");
-        Console.WriteLine($"Successful Simulations: {successSimulations}");
-        Console.WriteLine($"Failed Simulations: {failureSimulations}");
-        Console.WriteLine($"Min Success Rate: {minSuccessRate:P}");
-        Console.WriteLine($"Max Success Rate: {maxSuccessRate:P}");
-        Console.WriteLine($"Total Devices Hacked: {totalDevicesHacked}");
+        Console.WriteLine($"Общее количество симуляций: {totalSimulations/2}");
+        Console.WriteLine($"Успешных симуляций: {successSimulations}");
+        Console.WriteLine($"Неуспешных симуляций: {failureSimulations}");
+        Console.WriteLine($"Минимальная вероятность успеха: {minSuccessRate:P}");
+        Console.WriteLine($"Максимальная вероятность успеха: {maxSuccessRate:P}");
+        Console.WriteLine($"Общее количество взломанных устройств: {totalDevicesHacked}");
+        Console.WriteLine($"Total Devices Not Hacked: {totalDevicesNotHacked}");
+        var mostCommonPassword = passwordOccurrences.OrderByDescending(x => x.Value).First().Key; // Наиболее распространенный пароль
+        Console.WriteLine($"Самый распространенный пароль: {mostCommonPassword}");
 
-        var mostCommonPassword = passwordOccurrences.OrderByDescending(x => x.Value).First().Key;
-        Console.WriteLine($"Most Common Password: {mostCommonPassword}");
-
-
-        ShowSuccessRateGraph(successRates);
+        ShowSuccessRateGraph(successRates); // Отображение графика вероятности успеха
 
         Console.ReadKey();
     }
 
     static void ShowSuccessRateGraph(List<double> successRates)
     {
-        var plotModel = new PlotModel { Title = "Success Rate over Simulations" };
+        var plotModel = new PlotModel { Title = "Вероятность успеха в симуляциях" };
         var lineSeries = new LineSeries
         {
-            Title = "Success Rate",
+            Title = "Вероятность успеха",
             LineStyle = LineStyle.Solid,
             MarkerType = MarkerType.Circle,
             MarkerSize = 4,
@@ -87,14 +85,17 @@ class NetworkSecuritySimulation
         int successfulAttacks = 0;
         Parallel.For(0, numDevices, _ =>
         {
-            var network = InitializeNetwork();
-            string attackerPassword = GenerateUniquePassword(network.Passwords);
+            var network = InitializeNetwork(); // Инициализация сети
+            string attackerPassword = GenerateUniquePassword(network.Passwords); // Генерация уникального пароля для атаки
 
-            if (AttemptAttack(network, attackerPassword))
+            if (AttemptAttack(network, attackerPassword)) // Попытка атаки
             {
                 Interlocked.Increment(ref successfulAttacks);
                 // Увеличение количества успешно атакованных устройств
                 Interlocked.Increment(ref totalDevicesHacked);
+                // Уменьшение количества не взломанных устройств
+                Interlocked.Decrement(ref totalDevicesNotHacked);
+
             }
             // Сбор статистики о паролях
             lock (passwordOccurrences)
@@ -109,6 +110,7 @@ class NetworkSecuritySimulation
                 }
             }
         });
+
         // Сбор статистики о симуляциях
         Interlocked.Increment(ref totalSimulations);
         if (successfulAttacks > 0)
@@ -130,7 +132,6 @@ class NetworkSecuritySimulation
         {
             maxSuccessRate = successRate;
         }
-
 
         return (double)successfulAttacks / numDevices;
     }
@@ -163,7 +164,7 @@ class NetworkSecuritySimulation
 
     static string GeneratePassword(int length)
     {
-        const string characters = "0123456789";
+        const string characters = "01";
         char[] password = new char[length];
         Random random = new Random();
 
