@@ -1,0 +1,178 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using OxyPlot;
+using OxyPlot.Series;
+using OxyPlot.WindowsForms;
+using OxyPlot.Wpf;
+
+class NetworkSecuritySimulation
+{
+    static void Main(string[] args)
+    {
+        int numSimulations = 1000;// Количество симуляций        
+        int numDevices = 10;// Количество устройств в сети       
+        int passwordComplexity = 2;// Сложность паролей      
+        double successProbability = 1;// Вероятность успешной атаки
+
+        List<double> successRates = new List<double>();
+
+        for (int i = 0; i < numSimulations; i++)
+        {
+            double successRate = SimulateNetworkSecurity(numSimulations, numDevices, passwordComplexity, successProbability);
+            successRates.Add(successRate);
+            Console.WriteLine($"Simulation {i + 1}: Success Rate: {successRate:P}");
+        }
+
+        ShowSuccessRateGraph(successRates);
+
+        Console.ReadKey();
+
+    }
+
+
+    static void ShowSuccessRateGraph(List<double> successRates)
+    {
+        var plotModel = new PlotModel { Title = "Success Rate over Simulations" };
+
+        var lineSeries = new LineSeries
+        {
+            Title = "Success Rate",
+            LineStyle = LineStyle.Solid,
+            MarkerType = MarkerType.Circle,
+            MarkerSize = 4,
+            MarkerStroke = OxyColors.Blue,
+            MarkerFill = OxyColors.Blue,
+        };
+
+        for (int i = 0; i < successRates.Count; i++)
+        {
+            lineSeries.Points.Add(new DataPoint(i + 1, successRates[i]));
+        }
+
+        plotModel.Series.Add(lineSeries);
+
+        var plotView = new OxyPlot.WindowsForms.PlotView
+        {
+            Model = plotModel,
+            Dock = System.Windows.Forms.DockStyle.Fill
+        };
+
+        var form = new System.Windows.Forms.Form();
+        form.Size = new System.Drawing.Size(800, 600);
+        form.Controls.Add(plotView);
+        form.ShowDialog();
+    }
+
+
+    static double SimulateNetworkSecurity(int numSimulations, int numDevices, int passwordComplexity, double successProbability)
+    {
+        int successfulAttacks = 0;
+
+        // Параллельно выполняем симуляции
+        Parallel.ForEach(Enumerable.Range(0, numSimulations), simulation =>
+        {
+            var network = InitializeNetwork(numDevices, passwordComplexity);
+            string attackerPassword = GenerateUniquePassword(network.Passwords, passwordComplexity);
+
+            // Попытка атаки и увеличение счетчика успешных атак
+            if (AttemptAttack(network, attackerPassword, successProbability))
+            {
+                Interlocked.Increment(ref successfulAttacks);
+            }
+            // Визуализация текущей симуляции
+            //Console.WriteLine($"Simulation {simulation + 1}: Successful Attack: {successfulAttacks}/{simulation + 1}");
+        });
+
+        // Возвращаем процент успешных атак
+        return (double)successfulAttacks / numSimulations;
+    }
+
+    static Network InitializeNetwork(int numDevices, int passwordComplexity)
+    {
+        var network = new Network();
+
+        // Инициализация сети и устройств
+        for (int i = 0; i < numDevices; i++)
+        {
+            string password = GenerateUniquePassword(network.Passwords, passwordComplexity);
+            bool isVulnerable = RandomBoolean();
+            network.AddDevice(password, isVulnerable);
+        }
+
+        return network;
+    }
+
+    static string GenerateUniquePassword(Dictionary<string, bool> existingPasswords, int length)
+    {
+        string password;
+
+        do
+        {
+            // Генерируем уникальный пароль
+            password = GeneratePassword(length);
+        } while (existingPasswords.ContainsKey(password));
+
+        return password;
+    }
+
+    static string GeneratePassword(int length)
+    {
+        const string characters = "01"; // Допустимые символы для генерации паролей
+        char[] password = new char[length];
+        Random random = new Random(); // Создать экземпляр Random для генерации пароля
+
+        for (int i = 0; i < length; i++)
+        {
+            // Генерируем случайные символы для пароля
+            password[i] = characters[random.Next(characters.Length)];
+        }
+
+        return new string(password);
+    }
+
+    static bool AttemptAttack(Network network, string attackerPassword, double successProbability)
+    {
+        if (network.ContainsDevice(attackerPassword))
+        {
+            if (network.IsDeviceVulnerable(attackerPassword))
+            {
+                return RandomDouble() < successProbability;// Попытка атаки с учетом вероятности
+            }
+        }
+        return false;
+    }
+
+    static bool RandomBoolean()
+    {
+        return new Random().Next(2) == 0; // Генерируем случайное булево значение
+    }
+
+    static double RandomDouble()
+    {  
+        return new Random().NextDouble();// Генерируем случайное вещественное число
+    }
+}
+
+class Network
+{
+    private readonly Dictionary<string, bool> devices = new Dictionary<string, bool>();
+
+    public Dictionary<string, bool> Passwords { get; } = new Dictionary<string, bool>();
+
+    public void AddDevice(string password, bool isVulnerable)
+    {
+        devices[password] = isVulnerable; // Добавление пароля и уязвимости в сеть
+    }
+
+    public bool ContainsDevice(string password)
+    {
+        return devices.ContainsKey(password); // Проверка наличия устройства по паролю
+    }
+
+    public bool IsDeviceVulnerable(string password)
+    {
+        return devices[password]; // Проверка, является ли устройство уязвимым
+    }
+}
